@@ -5,7 +5,8 @@ import pandas as pd
 import tensorflow as tf
 
 #%%
-# dataset
+
+# TRAIN
 train = pd.read_csv("/Users/edouardcuny/Downloads/train.csv")
 x_train = train.iloc[:,1:]
 y_train = train.iloc[:,0]
@@ -21,6 +22,16 @@ y = np.zeros([y_train.shape[0],10])
 for i in range(y.shape[0]):
     y[i, int(y_train[i])]=1
 y_train = y
+
+
+# TEST
+test = pd.read_csv("/Users/edouardcuny/Downloads/test.csv")
+x_test = test.as_matrix()
+x_test = x_test/255
+
+
+
+
 
 #%%
 def next_batch_x_train(batch_size):
@@ -56,11 +67,6 @@ def next_batch_y_train(batch_size):
         index = index_batch_y_train
         index_batch_y_train += 1
         return array[index*batch_size:(index+1)*batch_size]
-
-#%%
-# import tensorflow as tf
-# from tensorflow.examples.tutorials.mnist import input_data
-# mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
 #%%
 
@@ -99,7 +105,7 @@ writer = tf.summary.FileWriter('/Users/edouardcuny/Desktop/train',
 # TRAIN
 batch_size = 10
 epochs = 30
-train_size = 10000 # on le suppose
+train_size = 6000 # on le suppose
 
 index_batch_x_train = 0
 index_batch_y_train = 0
@@ -112,14 +118,12 @@ for i in range(int((epochs*train_size)/batch_size)):
 correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
 print(sess.run(accuracy, feed_dict={x: x_train,
-                                    y_: y_train}))    
+                                    y_: y_train}))
 
-#%%
-from sklearn.ensemble import RandomForestClassifier
-clf = RandomForestClassifier()
-
-clf.fit(x_train, y_train)
-print(clf.score(x_train, y_train))
-
-
-
+#%% TRAINING IS NOW DONE
+prediction = sess.run(tf.argmax(y,1), feed_dict={x: x_test})
+prediction = pd.DataFrame(prediction)
+prediction[1] = [x+1 for x in range(prediction.shape[0])]
+prediction = prediction.iloc[:,[1,0]]
+prediction.columns = ['ImageId', 'Label']
+prediction.to_csv('/Users/edouardcuny/Desktop/ml/tf/submission.csv', index=False)

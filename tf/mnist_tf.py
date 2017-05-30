@@ -2,22 +2,65 @@
 from __future__ import division
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 
 #%%
 # dataset
 train = pd.read_csv("/Users/edouardcuny/Downloads/train.csv")
-x = train.iloc[:,1:]
-y = train.iloc[:,0]
-x = x.as_matrix()
-x= x/255
-y = y.as_matrix()
-x = x.astype('float64')
-y = y.astype('float64')
+x_train = train.iloc[:,1:]
+y_train = train.iloc[:,0]
+x_train = x_train.as_matrix()
+x_train = x_train/255
+
+y_train = y_train.as_matrix()
+x_train = x_train.astype('float64')
+y_train = y_train.astype('float64')
+
+# y_train from labels to one hot
+y = np.zeros([y_train.shape[0],10])
+for i in range(y.shape[0]):
+    y[i, int(y_train[i])]=1
+y_train = y
 
 #%%
-import tensorflow as tf
-from tensorflow.examples.tutorials.mnist import input_data
-mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
+def next_batch_x_train(batch_size):
+    global index_batch_x_train
+    array = x_train
+    
+    if batch_size > array.shape[0]:
+        raise IndexError
+    
+    if (index_batch_x_train+1)*batch_size > array.shape[0]:
+        index = index_batch_x_train
+        index_batch_x_train = 0
+        return array[index*batch_size:,:]
+    
+    else:
+        index = index_batch_x_train
+        index_batch_x_train += 1
+        return array[index*batch_size:(index+1)*batch_size]
+
+def next_batch_y_train(batch_size):
+    global index_batch_y_train
+    array = y_train
+    
+    if batch_size > array.shape[0]:
+        raise IndexError
+    
+    if (index_batch_y_train+1)*batch_size > array.shape[0]:
+        index = index_batch_y_train
+        index_batch_y_train = 0
+        return array[index*batch_size:,:]
+    
+    else:
+        index = index_batch_y_train
+        index_batch_y_train += 1
+        return array[index*batch_size:(index+1)*batch_size]
+
+#%%
+# import tensorflow as tf
+# from tensorflow.examples.tutorials.mnist import input_data
+# mnist = input_data.read_data_sets('MNIST_data', one_hot=True)
 
 #%%
 
@@ -53,18 +96,30 @@ merged = tf.summary.merge_all()
 writer = tf.summary.FileWriter('/Users/edouardcuny/Desktop/train',
                                       sess.graph)
 
-
 # TRAIN
 batch_size = 10
 epochs = 30
-train_size = 6000 # on le suppose
+train_size = 10000 # on le suppose
 
+index_batch_x_train = 0
+index_batch_y_train = 0
 for i in range(int((epochs*train_size)/batch_size)):
-  batch_xs, batch_ys = mnist.train.next_batch(batch_size)
+  batch_xs = next_batch_x_train(batch_size)
+  batch_ys = next_batch_y_train(batch_size)
   sess.run(train_step, feed_dict={x: batch_xs, y_: batch_ys})
       
 # TEST
 correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-print(sess.run(accuracy, feed_dict={x: mnist.test.images,
-                                    y_: mnist.test.labels}))    
+print(sess.run(accuracy, feed_dict={x: x_train,
+                                    y_: y_train}))    
+
+#%%
+from sklearn.ensemble import RandomForestClassifier
+clf = RandomForestClassifier()
+
+clf.fit(x_train, y_train)
+print(clf.score(x_train, y_train))
+
+
+
